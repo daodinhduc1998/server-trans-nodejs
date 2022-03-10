@@ -1,0 +1,55 @@
+{
+  "name": "server-translator",
+  "version": "1.0.0",
+  "description": "server trans",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "nodemon --max-old-space-size=4096 --inspect src/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daodinhduc1998/server-trans-nodejs.git"
+  },
+  "keywords": [
+    "server"
+  ],
+  "author": "DucDD",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/daodinhduc1998/server-trans-nodejs/issues"
+  },
+  "homepage": "https://github.com/daodinhduc1998/server-trans-nodejs#readme",
+  "dependencies": {
+        "bcryptjs": "^2.4.3",
+        "body-parser": "^1.19.0",
+        "bufferhelper": "^0.2.1",
+        "cheerio": "^1.0.0-rc.10",
+        "cookie-parser": "^1.4.5",
+        "cors": "^2.8.5",
+        "csurf": "^1.11.0",
+        "dotenv": "^10.0.0",
+        "dropzone": "^6.0.0-beta.1",
+        "express": "^4.17.3",
+        "express-flash": "^0.0.2",
+        "iconv-lite": "^0.6.3",
+        "jsonwebtoken": "^8.5.1",
+        "method-override": "^3.0.0",
+        "mongoose": "^6.0.11",
+        "mongoose-delete": "^0.5.4",
+        "rand-token": "^1.0.1",
+        "request": "^2.88.2",
+        "socket.io": "^4.4.1",
+        "underscore": "^1.13.1"
+    },
+    "devDependencies": {
+        "lint-staged": "^11.2.3",
+        "morgan": "^1.10.0",
+        "node-sass": "^6.0.1",
+        "nodemon": "^2.0.13"
+    },
+    "optionalDependencies": {
+        "bufferutil": "^4.0.6",
+        "utf-8-validate": "^5.0.8"
+    }
+}

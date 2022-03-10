@@ -1,0 +1,48 @@
+const TranslatorEngine = require('../methods/TranslatorEngine')
+const Dict = require('../models/dictionary.model')
+const TransUtils = require('../utils/trans.utils')
+const dict = require('../methods/Dictionary')
+
+class TransController {
+    //POST /api/translate
+    async Translate(req, res, next) {
+        //translationAlgorithm:
+        /*	0:ưu tiên cụm vp dài
+         *	1: dịch từ tría sang phải
+         *	2: ưu tiên cum vp dài >=4
+         *	prioritizedName
+         *  true/false: ưu tiên cụm Names hơn VP
+        */
+        var result
+        if (req.body) {
+            result = this.Dich(req.chinese, parseInt(req.wrapType), parseInt(req.translationAlgorithm), req.prioritizedName);
+        }
+        res.status(200).json({ 'chinese': req.chinese, 'trans': result })
+
+    }
+
+    async Test(req, res, next) {
+        var param = {
+            "chinese": "优等生不需要超能力(全本)",
+            "wrapType": 0,
+            "translationAlgorithm": 2,
+            "prioritizedName": 1
+        }
+        var a = TranslatorEngine.Dich(`<p> 《五等分的花嫁》+《我们学不来 <br>《就算变态也会喜欢》</p>`, 0, 2, 0)
+        //var result = await this.Dich(param.chinese, param.wrapType, param.translationAlgorithm, param.prioritizedName)
+        res.status(200).json({ 'msg': a })
+
+    }
+
+
+
+    async LoadDictionnary() {
+        Dict.find({}).then(data => {
+            TranslatorEngine.LoadDictionaries(data)
+        })
+    }
+
+
+}
+
+module.exports = new TransController()
