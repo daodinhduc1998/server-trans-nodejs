@@ -15,9 +15,15 @@ class TransController {
         */
         var result
         if (req.body) {
-            result = this.Dich(req.chinese, parseInt(req.wrapType), parseInt(req.translationAlgorithm), req.prioritizedName);
+            result = TranslatorEngine.Dich(req.chinese, parseInt(req.wrapType), parseInt(req.translationAlgorithm), req.prioritizedName);
         }
-        res.status(200).json({ 'chinese': req.chinese, 'trans': result })
+        if (result) {
+            res.status(200).json({ 'msg': 'success', 'chinese': req.chinese, 'trans': result })
+        }
+        else {
+            res.status(404).json({ 'msg': 'failed', 'content': '#1' })
+        }
+
 
     }
 

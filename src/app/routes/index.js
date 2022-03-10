@@ -11,7 +11,7 @@ module.exports = function (app) {
     // NameDict1.Add('keytest1', 'valuetest1')
     // console.log(NameDict.KeyValuePairs(), '\n', NameDict1, '\n', NameDict)
 
-    //app.post('/api/translate', TransController.Dich)
-    app.get('/api/test', TransController.Test)
+    app.post('/api/translate', TransController.Translate)
+    //app.get('/api/test', TransController.Test)
     //app.get('/api/preload', TransController.LoadDictionnary)
 }
