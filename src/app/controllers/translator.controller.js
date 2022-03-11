@@ -15,16 +15,14 @@ class TransController {
         */
         var result
         if (req.body) {
-            result = TranslatorEngine.Dich(req.chinese, parseInt(req.wrapType), parseInt(req.translationAlgorithm), req.prioritizedName);
+            result = TranslatorEngine.Dich(req.body.chinese, parseInt(req.body.wrapType), parseInt(req.body.translationAlgorithm), req.body.prioritizedName);
         }
         if (result) {
-            res.status(200).json({ 'msg': 'success', 'chinese': req.chinese, 'trans': result })
+            res.status(200).send(result)
         }
         else {
             res.status(404).json({ 'msg': 'failed', 'content': '#1' })
         }
-
-
     }
 
     async Test(req, res, next) {
@@ -42,10 +40,14 @@ class TransController {
 
 
 
-    async LoadDictionnary() {
+    async LoadDictionary() {
         Dict.find({}).then(data => {
             TranslatorEngine.LoadDictionaries(data)
         })
+    }
+
+    async LoadDictionaryFolder() {
+        TranslatorEngine.LoadDictionariesFiles()
     }
 
 

@@ -2,6 +2,7 @@
 var Dict = require('./Dictionary')
 var CharRange = require('./CharRange')
 const TransUtils = require('../utils/trans.utils')
+const path = require('path');
 
 class TranslatorEngine {
 
@@ -37,7 +38,234 @@ class TranslatorEngine {
     trimCharsForAnalyzer = [' ', '\r', '\n', '\t']
 
 
+    //=================
+    LoadDictionaries(dataMongoDB) {
+        var count = (dataMongoDB.length).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+        console.log("#==========[Start loading dictionnary]==========#")
+
+        var HanvietList = []
+        var IgnoredChineseList = []
+        var LuatnhanList = []
+        var PronounList = []
+        var VietPhraseList = []
+        var NameList = []
+        console.time('[Total time]')
+        console.time('[Analytics Data]')
+        dataMongoDB.forEach(value => {
+            switch (value.name) {
+                case "hanviet":
+                    HanvietList.push(value)
+                    break
+                case "ignored":
+                    IgnoredChineseList.push(value)
+                    break
+                case "luatnhan":
+                    LuatnhanList.push(value)
+                    break
+                case "pronoun":
+                    PronounList.push(value)
+                    break
+                case "vietphrase":
+                    VietPhraseList.push(value)
+                    break
+                case "nameschinh":
+                case "namesphu":
+                    NameList.push(value)
+                    break
+            }
+        })
+        dataMongoDB.splice(0, dataMongoDB.length)
+        console.timeEnd('[Analytics Data]')
+        if (HanvietList.length > 0) {
+            console.time('[Load HanvietDict]')
+            this.loadHanVietDictionary(HanvietList)
+            console.timeEnd('[Load HanvietDict]')
+            console.log("Total: " + this.hanVietDictionary.KeyValuePairs().length + " (records)")
+            HanvietList = []
+        }
+        if (IgnoredChineseList.length > 0) {
+            console.time('[Load IgnoredChinese]')
+            this.loadIgnoredChinesePhraseLists(IgnoredChineseList)
+            console.timeEnd('[Load IgnoredChinese]')
+            console.log("Total: " + this.ignoredChinesePhraseList.length + " (records)")
+            IgnoredChineseList = []
+        }
+        if (NameList.length > 0) {
+            console.time('[Load NameList]')
+            this.loadOnlyNameDictionary(NameList)
+            console.timeEnd('[Load NameList]')
+            console.log("Total: " + this.onlyNameDictionary.KeyValuePairs().length + " (records)")
+            NameList = []
+        }
+        if (VietPhraseList.length > 0) {
+            console.time('[Load VietPhraseList]')
+            this.loadOnlyVietPhraseDictionary(VietPhraseList)
+            this.loadVietPhraseDictionary();
+            this.vietPhraseDictionaryToVietPhraseOneMeaningDictionary();
+            console.timeEnd('[Load VietPhraseList]')
+            console.log("Total: " + this.vietPhraseDictionary.KeyValuePairs().length + " (records)")
+            VietPhraseList = []
+        }
+
+        if (PronounList.length > 0) {
+            console.time('[Load PronounList]')
+            this.loadPronounDictionary(PronounList)
+            this.pronounDictionaryToPronounOneMeaningDictionary();
+            console.timeEnd('[Load PronounList]')
+            console.log("Total: " + this.pronounDictionary.KeyValuePairs().length + " (records)")
+            PronounList = []
+        }
+        if (LuatnhanList.length > 0) {
+            console.time('[Load LuatnhanList]')
+            this.loadLuatNhanDictionary(LuatnhanList)
+            this.loadNhanByDictionary();
+            this.loadNhanByOneMeaningDictionary();
+            console.timeEnd('[Load LuatnhanList]')
+            console.log("Total: " + this.luatNhanDictionary.KeyValuePairs().length + " (records)")
+            LuatnhanList = []
+        }
+        console.timeEnd('[Total time]')
+        console.log("[Done] : total " + count + "(records)")
+        console.log("#=============[ Loading completed ]=============#")
+
+    }
+    LoadDictionariesFiles() {
+        console.log("#==========[Start loading dictionnary folder]==========#")
+        var HanvietList = []
+        var IgnoredChineseList = []
+        var LuatnhanList = []
+        var PronounList = []
+        var VietPhraseList = []
+        var NameList = []
+        console.time('[Total time]')
+        console.time('[Analytics Data]')
+
+        TransUtils.readFiles(path.join(__dirname, '../utils/Data'))
+            .then(files => {
+                files.forEach((item, index) => {
+                    switch (item.filename) {
+                        case "Vietphrase.txt":
+                            item.contents.split(/\r?\n/).forEach(line => {
+                                var arr = line.split('=')
+                                if (arr.length == 2 && arr[0] != "") {
+                                    VietPhraseList.push({ "name": 'vietphrase', "key": arr[0], "value": arr[1] })
+                                }
+                            });
+                            delete item.contents
+                            break
+                        case "IgnoredChinesePhrases.txt":
+                            item.contents.split(/\r?\n/).forEach(line => {
+                                var arr = line.split('=')
+                                if (arr.length == 2 && arr[0] != "") {
+                                    HanvietList.push({ "name": 'ignored', "key": arr[0], "value": arr[1] })
+                                }
+                            });
+                            break
+                        case "LuatNhan.txt":
+                            item.contents.split(/\r?\n/).forEach(line => {
+                                var arr = line.split('=')
+                                if (arr.length == 2 && arr[0] != "") {
+                                    LuatnhanList.push({ "name": 'luatnhan', "key": arr[0], "value": arr[1] })
+                                }
+                            });
+                            break
+                        case "ChinesePhienAmWords.txt":
+                            item.contents.split(/\r?\n/).forEach(line => {
+                                var arr = line.split('=')
+                                if (arr.length == 2 && arr[0] != "") {
+                                    HanvietList.push({ "name": 'hanviet', "key": arr[0], "value": arr[1] })
+                                }
+                            });
+                            break
+                        case "Pronouns.txt":
+                            item.contents.split(/\r?\n/).forEach(line => {
+                                var arr = line.split('=')
+                                if (arr.length == 2 && arr[0] != "") {
+                                    PronounList.push({ "name": 'pronoun', "key": arr[0], "value": arr[1] })
+                                }
+                            });
+                            break
+                        case "Names.txt":
+                        case "Names2.txt":
+                            item.contents.split(/\r?\n/).forEach(line => {
+                                var arr = line.split('=')
+                                if (arr.length == 2 && arr[0] != "") {
+                                    if (item.filename == "Names.txt") {
+                                        NameList.push({ "name": 'nameschinh', "key": arr[0], "value": arr[1] })
+                                    }
+                                    if (item.filename == "Names2.txt") {
+                                        NameList.push({ "name": 'namesphu', "key": arr[0], "value": arr[1] })
+                                    }
+
+                                }
+                            });
+                            break
+                    }
+                    delete item.contents
+                });
+                console.timeEnd('[Analytics Data]')
+                if (HanvietList.length > 0) {
+                    console.time('[Load HanvietDict]')
+                    this.loadHanVietDictionary(HanvietList)
+                    console.timeEnd('[Load HanvietDict]')
+                    console.log("Total: " + this.hanVietDictionary.KeyValuePairs().length + " (records)")
+                    HanvietList = []
+                }
+                if (IgnoredChineseList.length > 0) {
+                    console.time('[Load IgnoredChinese]')
+                    this.loadIgnoredChinesePhraseLists(IgnoredChineseList)
+                    console.timeEnd('[Load IgnoredChinese]')
+                    console.log("Total: " + this.ignoredChinesePhraseList.length + " (records)")
+                    IgnoredChineseList = []
+                }
+                if (NameList.length > 0) {
+                    console.time('[Load NameList]')
+                    this.loadOnlyNameDictionary(NameList)
+                    console.timeEnd('[Load NameList]')
+                    console.log("Total: " + this.onlyNameDictionary.KeyValuePairs().length + " (records)")
+                    NameList = []
+                }
+                if (VietPhraseList.length > 0) {
+                    console.time('[Load VietPhraseList]')
+                    this.loadOnlyVietPhraseDictionary(VietPhraseList)
+                    this.loadVietPhraseDictionary();
+                    this.vietPhraseDictionaryToVietPhraseOneMeaningDictionary();
+                    console.timeEnd('[Load VietPhraseList]')
+                    console.log("Total: " + this.vietPhraseDictionary.KeyValuePairs().length + " (records)")
+                    VietPhraseList = []
+                }
+
+                if (PronounList.length > 0) {
+                    console.time('[Load PronounList]')
+                    this.loadPronounDictionary(PronounList)
+                    this.pronounDictionaryToPronounOneMeaningDictionary();
+                    console.timeEnd('[Load PronounList]')
+                    console.log("Total: " + this.pronounDictionary.KeyValuePairs().length + " (records)")
+                    PronounList = []
+                }
+                if (LuatnhanList.length > 0) {
+                    console.time('[Load LuatnhanList]')
+                    this.loadLuatNhanDictionary(LuatnhanList)
+                    this.loadNhanByDictionary();
+                    this.loadNhanByOneMeaningDictionary();
+                    console.timeEnd('[Load LuatnhanList]')
+                    console.log("Total: " + this.luatNhanDictionary.KeyValuePairs().length + " (records)")
+                    LuatnhanList = []
+                }
+                console.timeEnd('[Total time]')
+                console.log("#=============[ Loading completed ]=============#")
+
+            })
+            .catch(error => {
+                console.log(error);
+            });
+
+
+
+    }
+
     Dich(sTQ, wrapType, translationAlgorithm, prioritizedName) {
+        if (!sTQ) return
         var arr = TransUtils.skipTag(sTQ);
         for (var k = 0; k < arr.length; k++) {
             if (arr[k].length > 4) {
@@ -59,7 +287,7 @@ class TranslatorEngine {
             }
         }
 
-        return TransUtils.ChuanHoaResponse(sTQ, wrapType);
+        return TransUtils.ChuanHoaResponse(sTQ, wrapType).trim();
 
     }
 
@@ -119,9 +347,8 @@ class TranslatorEngine {
             }
         })
         var temp = dictionary.KeyValuePairs().sort(function (a, b) {
-            return b.Key.length - a.Key.length
+            return b.Key.toString().length - a.Key.toString().length
         })
-
         this.luatNhanDictionary.Clear();
         temp.forEach(current => {
             this.luatNhanDictionary.Add(current.Key, current.Value);
@@ -142,8 +369,8 @@ class TranslatorEngine {
         if (dataMongoDB.length) {
             var result = dataMongoDB.filter(function (x) { return x != "" })
             result.forEach(value => {
-                var text2 = this._TrimCharList(this.standardizeInputWithoutRemovingIgnoredChinesePhrases(value.key), ['\n', '\t'])
-                if (!text2 && !this.ignoredChinesePhraseList.includes(text2)) {
+                var text2 = this._TrimCharList(this.standardizeInputWithoutRemovingIgnoredChinesePhrases(value), ['\n', '\t'])
+                if (text2 && !this.ignoredChinesePhraseList.includes(text2)) {
                     this.ignoredChinesePhraseList.push(text2);
                 }
             })
@@ -158,7 +385,7 @@ class TranslatorEngine {
     loadVietPhraseDictionary() {
         this.vietPhraseDictionary.Clear();
         this.onlyNameDictionary.KeyValuePairs().forEach(current => {
-            if (!this.vietPhraseDictionary.KeyValuePairs().ContainsKey(current.Key)) {
+            if (!this.vietPhraseDictionary.ContainsKey(current.Key)) {
                 this.vietPhraseDictionary.Add(current.Key, current.Value);
             }
         })
@@ -167,6 +394,7 @@ class TranslatorEngine {
                 this.vietPhraseDictionary.Add(current2.Key, current2.Value);
             }
         })
+
     }
 
     vietPhraseDictionaryToVietPhraseOneMeaningDictionary() {
@@ -179,7 +407,7 @@ class TranslatorEngine {
     pronounDictionaryToPronounOneMeaningDictionary() {
         this.pronounOneMeaningDictionary.Clear();
         this.pronounDictionary.KeyValuePairs().forEach(current => {
-            this.pronounOneMeaningDictionary.Add(current.Key, current.Value.includes("/") || current.Value.includes("|") ? current.Value.Split(/[/|]/)[0] : current.Value);
+            this.pronounOneMeaningDictionary.Add(current.Key, current.Value.includes("/") || current.Value.includes("|") ? current.Value.split(/[/|]/)[0] : current.Value);
         })
     }
 
@@ -257,112 +485,6 @@ class TranslatorEngine {
                 break;
         }
     }
-
-    loadIgnoredChinesePhraseLists(arrayIgnoredChinesePhrase) {
-        this.ignoredChinesePhraseList = []
-        if (arrayIgnoredChinesePhrase.length) {
-            var result = arrayIgnoredChinesePhrase.filter(function (x) { return x != "" })
-            result.forEach(value => {
-                var text2 = this._TrimCharList(this.standardizeInputWithoutRemovingIgnoredChinesePhrases(value.key), ['\n', '\t'])
-                if (!text2 && !this.ignoredChinesePhraseList.includes(text2)) {
-                    this.ignoredChinesePhraseList.push(text2);
-                }
-            })
-            this.ignoredChinesePhraseList.sort()
-            this.ignoredChinesePhraseList.reverse()
-        }
-
-
-    }
-
-    //=================
-    LoadDictionaries(dataMongoDB) {
-        var count = (dataMongoDB.length).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-        console.log("#==========[Start loading dictionnary]==========#")
-
-        var HanvietList = []
-        var IgnoredChineseList = []
-        var LuatnhanList = []
-        var PronounList = []
-        var VietPhraseList = []
-        var NameList = []
-        console.time('[Total time]')
-        console.time('[Analytics Data]')
-        dataMongoDB.forEach(value => {
-            switch (value.name) {
-                case "hanviet":
-                    HanvietList.push(value)
-                    break
-                case "ignored":
-                    IgnoredChineseList.push(value)
-                    break
-                case "luatnhan":
-                    LuatnhanList.push(value)
-                    break
-                case "pronoun":
-                    PronounList.push(value)
-                    break
-                case "vietphrase":
-                    VietPhraseList.push(value)
-                    break
-                case "nameschinh":
-                case "namesphu":
-                    NameList.push(value)
-                    break
-            }
-        })
-        dataMongoDB.splice(0, dataMongoDB.length)
-        console.timeEnd('[Analytics Data]')
-        if (HanvietList.length > 0) {
-            console.time('[Load HanvietDict]')
-            this.loadHanVietDictionary(HanvietList)
-            console.timeEnd('[Load HanvietDict]')
-            HanvietList.splice(0, HanvietList.length)
-        }
-        if (IgnoredChineseList.length > 0) {
-            console.time('[Load IgnoredChinese]')
-            this.loadIgnoredChinesePhraseLists(IgnoredChineseList)
-            console.timeEnd('[Load IgnoredChinese]')
-            IgnoredChineseList.splice(0, IgnoredChineseList.length)
-        }
-
-
-        if (LuatnhanList.length > 0) {
-            console.time('[Load LuatnhanList]')
-            this.loadLuatNhanDictionary(LuatnhanList)
-            this.loadNhanByDictionary();
-            this.loadNhanByOneMeaningDictionary();
-            console.timeEnd('[Load LuatnhanList]')
-            LuatnhanList.splice(0, LuatnhanList.length)
-        }
-
-        if (PronounList.length > 0) {
-            console.time('[Load PronounList]')
-            this.loadPronounDictionary(PronounList)
-            this.pronounDictionaryToPronounOneMeaningDictionary();
-            console.timeEnd('[Load PronounList]')
-            PronounList.splice(0, PronounList.length)
-        }
-        if (VietPhraseList.length > 0) {
-            console.time('[Load VietPhraseList]')
-            this.loadOnlyVietPhraseDictionary(VietPhraseList)
-            this.loadVietPhraseDictionary();
-            this.vietPhraseDictionaryToVietPhraseOneMeaningDictionary();
-            console.timeEnd('[Load VietPhraseList]')
-            VietPhraseList.splice(0, VietPhraseList.length)
-        }
-        if (NameList.length > 0) {
-            console.time('[Load NameList]')
-            this.loadOnlyNameDictionary(NameList)
-            console.timeEnd('[Load NameList]')
-            NameList.splice(0, NameList.length)
-        }
-        console.timeEnd('[Total time]')
-        console.log("[Done] : total " + count + "(records)")
-        console.log("#=============[ Loading completed ]=============#")
-
-    }
-
     //=========================
     //Translator
 
@@ -458,7 +580,7 @@ class TranslatorEngine {
                                         if (this.isLongestPhraseInSentence(chinese, i - 1, num5 - 1, this.vietPhraseOneMeaningDictionary, translationAlgorithm)) {
                                             j = num5;
 
-                                            var text2 = this.ChineseToLuatNhan(chinese.Substring(i, j), this.nhanByOneMeaningDictionary);
+                                            var text2 = this.ChineseToLuatNhan(this._Substring(chinese, i, j), this.nhanByOneMeaningDictionary);
                                             if (wrapType == 0) {
                                                 this.appendTranslatedWord(stringBuilder, text2, text);
                                             }
@@ -653,6 +775,11 @@ class TranslatorEngine {
         return -1;
     }
 
+    appendTranslatedWord0(result, translatedText, lastTranslatedWord) {
+        var num = 0;
+        appendTranslatedWord(result, translatedText, lastTranslatedWord, num);
+    }
+
     appendTranslatedWord(result, translatedText, lastTranslatedWord, startIndexOfNextTranslatedText) {
         if (lastTranslatedWord.endsWith("\n") || lastTranslatedWord.endsWith("\t") ||
             lastTranslatedWord.endsWith(". ") || lastTranslatedWord.endsWith("\"") ||
@@ -699,13 +826,13 @@ class TranslatorEngine {
             var character = chinese[i + 1];
             if (this.isChinese(c)) {
                 if (this.isChinese(character)) {
-                    this.appendTranslatedWord(stringBuilder, this.ChineseToHanViet(c), LastTranslatedWord_HanViet, length2);
+                    this.appendTranslatedWord0(stringBuilder, this.ChineseToHanViet(c), LastTranslatedWord_HanViet, length2);
                     stringBuilder.push(" ");
                     LastTranslatedWord_HanViet += " ";
                     list.push(new CharRange(length2, this.ChineseToHanViet(c).length));
                 }
                 else {
-                    this.appendTranslatedWord(stringBuilder, this.ChineseToHanViet(c), LastTranslatedWord_HanViet, length2);
+                    this.appendTranslatedWord0(stringBuilder, this.ChineseToHanViet(c), LastTranslatedWord_HanViet, length2);
                     list.push(new CharRange(length2, this.ChineseToHanViet(c).length));
                 }
             }
@@ -736,29 +863,25 @@ class TranslatorEngine {
 
     ChineseToLuatNhan3(chinese, dictionary, luatNhan) {
         var arg_06_0 = chinese.length;
-        try {
-            this.luatNhanDictionary.KeyValuePairs().forEach(current => {
-                var str = current.Key.replace("{0}", "(.+)");
-                var rgx = new RegExp("^" + str + "$", 'i')
-                var match = chinese.match(rgx);
-                if (match && dictionary.ContainsKey(match[1])) {
-                    var array = dictionary[match[1]].split(/[/|]/);
-                    var stringBuilder = [];
-                    var array2 = [...array];
-                    for (var i = 0; i < array2.length; i++) {
-                        var newValue = array2[i];
-                        stringBuilder.push(current.Value.replace("{0}", newValue));
-                        stringBuilder.push("/");
-                    }
-                    luatNhan = current.Key;
-                    return this._TrimCharList(stringBuilder.join(''), ['/']);
+
+        this.luatNhanDictionary.KeyValuePairs().forEach(current => {
+            var str = current.Key.replace("{0}", "(.+)");
+            var rgx = new RegExp("^" + str + "$", 'i')
+            var match = chinese.match(rgx);
+            if (match && dictionary.ContainsKey(match[1])) {
+                var array = dictionary[match[1]].split(/[/|]/);
+                var stringBuilder = [];
+                var array2 = [...array];
+                for (var i = 0; i < array2.length; i++) {
+                    var newValue = array2[i];
+                    stringBuilder.push(current.Value.replace("{0}", newValue));
+                    stringBuilder.push("/");
                 }
-            })
-        }
-        catch (e) {
-            console.log("#Luatnhan3: " + e)
-            //console.log("Lỗi xử lý luật nhân cho cụm từ: " + chinese)
-        }
+                luatNhan = current.Key;
+                return this._TrimCharList(stringBuilder.join(''), ['/']);
+            }
+        })
+
 
     }
 
@@ -807,8 +930,10 @@ class TranslatorEngine {
             var text2 = array2[i];
             if (text2.trim()) {
                 stringBuilder.push("\t" + text2.trim())
+                //#Check error
                 stringBuilder.push("\n")
                 stringBuilder.push(insertBlankLine ? "\n" : "")
+                //stringBuilder.push(insertBlankLine ? " " : "")
             }
         }
         return stringBuilder.join('');
@@ -837,7 +962,7 @@ class TranslatorEngine {
             for (var i = 0; i < text.length; i++) {
                 if (arr[i] == '>') {
                     var j = i;
-                    while (!hgac.includes(arr[j]) && j < arr.length) {
+                    while (!this.hgac.includes(arr[j]) && j < arr.length) {
                         j++;
                     }
                     arr[j] = arr[j].toUpperCase();
@@ -853,7 +978,9 @@ class TranslatorEngine {
     //C# String.Remove method
     _RemoveString(string, start, count) {
         //Check
-        if (start < string.length && count + start <= string.length) {
+
+        string = string.toString()
+        if (start < string.length && count + start <= string.length && string) {
             var str1 = string.substr(0, start);
             var str2 = string.replace(str1, '').substr(count, string.length - 1)
             return str1 + str2
@@ -861,11 +988,13 @@ class TranslatorEngine {
             console.log("Error Remove string");
             return ""
         }
+
+
     }
 
     _Substring(string, start, length) {
         //Check
-        if (start < string.length && length + start <= string.length) {
+        if (start < string.length && length + start <= string.length && string) {
             return string.substring(start, start + length)
         } else {
             console.log("Error substring string");

@@ -45,10 +45,6 @@ app.use(
     }),
 );
 
-
-
-route(app)
-
 app.use(express.json());
 app.use(flash());
 
@@ -58,7 +54,7 @@ app.use(morgan(':method :status :response-time ms :url'));
 
 
 
-
+route(app)
 
 // set port, listen for requests
 const PORT = process.env.PORT || 8888;
